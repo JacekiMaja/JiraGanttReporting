@@ -1,0 +1,96 @@
+from jira import JIRA
+from openpyxl import load_workbook
+
+print('Program starts pulling data from Jira')
+# Settings
+email = 'jacek.dar.ostaszewski@dxc.com'  # Jira username
+api_token = "MzY4ODY1MzI1ODg1OmZMrLvqdY0FjYDJdZvXANcYddD5"  # Jira API token
+server = 'https://jira.dxc.com'  # Jira server URL
+jql = "project = APOMON"  # JQL
+
+# Get issues from Jira in JSON format
+jira = JIRA(options={'server': server}, token_auth=(api_token))
+# Create all issues for pulling consecutive fields for printing
+jira_issues = jira.search_issues(jql, maxResults=0)
+
+row=0
+
+def utworz_liste(issue):
+    # utwórz listę do druku z pól issue
+    issuekey = str(issue)
+    issuetype = jira.issue(issuekey).fields.issuetype
+    summary = jira.issue(issuekey).fields.summary
+    assignee = jira.issue(issuekey).fields.assignee
+    priority = jira.issue(issuekey).fields.priority
+    status = jira.issue(issuekey).fields.status
+    created = jira.issue(issuekey).fields.created
+    duedate = jira.issue(issuekey).fields.duedate
+    plannedclosingdate = jira.issue(issuekey).fields.customfield_10310
+    lista_pol = [issuekey, issuetype, summary, assignee, priority, status, created, duedate, plannedclosingdate]
+    return lista_pol
+def drukuj_subtasks(epicsubtasks,work_sheet):
+    column = 0
+    global row
+    for e in epicsubtasks:
+        if e != []:
+            print('Epic subtasks: ' + str(e))
+            lista_pol_epicsubtask = utworz_liste(e)
+            print(*lista_pol_epicsubtask, sep=' ')
+            for i in range(len(lista_pol_epicsubtask)):
+                mycell = work_sheet.cell(row=row+1,column=i+1)
+                mycell.value = str(lista_pol_epicsubtask[i])
+            row = row + 1
+
+print('Now I am popultating tabels with data')
+print('Epics in process')
+# Definition of table for issues excluding subtasks
+tabela = []
+# Table for subtasks
+epicsubtable = []
+issuesubtable = []
+
+
+# Creat list of Epics
+epic_lists =jira.search_issues("'issuetype'=Epic AND project='APOMON'")
+# Create list of issues in Epics plus subtasks for Epics in separate subtasks table
+for issue in epic_lists:
+    issue_list = jira.search_issues("'Epic Link'=%s AND project=%s" %(str(issue), 'APOMON'), maxResults=500)
+    tabela.append(issue_list)
+    subtasks = jira.issue(issue).get_field('subtasks')
+    epicsubtable.append(subtasks)
+print('Issues and subtasks in progress')
+# Create list of subtasks for Issues in table: tabela
+for i in range(len(tabela)):
+    for il in range(len(tabela[i])):
+        subtasks = jira.issue(tabela[i][il]).get_field('subtasks')
+        issuesubtable.append(subtasks)
+
+print('Start writing data')
+subindex = 0
+# Open workbook
+wb = load_workbook('testfile.xlsx')
+work_sheet = wb.active
+
+# Write all the fields for epic and epic subtasks
+for i in range(len(tabela)):
+    epic = str(epic_lists[i])
+    print('Epic:' + epic)
+    lista_pol_epica = utworz_liste(epic)
+    print(*lista_pol_epica, sep=' ')
+    for col in range(0,len(lista_pol_epica)):
+        mycell = work_sheet.cell(row=(1+row),column=(col+1))
+        mycell.value = str(lista_pol_epica[col])
+    row = row + 1
+    epicsubtasks = epicsubtable[i]
+    drukuj_subtasks(epicsubtasks,work_sheet)
+
+# Write all the fields for issues and issues subtasks
+    for il in range(len(tabela[i])):
+        print('Issue: ' + str(tabela[i][il]))
+        print('issue subtasks: ' + str(issuesubtable[subindex]))
+        subindex +=1
+
+
+wb.save('testfile.xlsx')
+print('Koniec')
+
