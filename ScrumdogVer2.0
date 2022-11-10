@@ -1,0 +1,62 @@
+from jira import JIRA
+
+print('Program starts pulling data from Jira')
+# Settings
+email = 'jacek.dar.ostaszewski@dxc.com'  # Jira username
+api_token = "MzY4ODY1MzI1ODg1OmZMrLvqdY0FjYDJdZvXANcYddD5"  # Jira API token
+server = 'https://jira.dxc.com'  # Jira server URL
+jql = "project = APOMON"  # JQL
+
+# Get issues from Jira in JSON format
+jira = JIRA(options={'server': server}, token_auth=(api_token))
+# Create all issues for pulling consecutive fields for printing
+jira_issues = jira.search_issues(jql, maxResults=0)
+
+
+def utworz_liste(issue):
+    # utwórz listę do druku z pól issue
+    issuekey = issue
+    issuetype = issue.fields.issuetype
+    summary = issue.fields.summary
+    assignee = issue.fields.assignee
+    priority = issue.fields.priority
+    status = issue.fields.status
+    created = issue.fields.created
+    duedate = issue.fields.duedate
+    lista_pol = [issuekey, issuetype, summary, assignee, priority, status, created, duedate]
+    return lista_pol
+print('Now I am popultating tabels with data')
+print('Epics in process')
+# Definition of table for issues excluding subtasks
+tabela = []
+# Table for subtasks
+epicsubtable = []
+issuesubtable = []
+
+# Creat list of Epics
+epic_lists =jira.search_issues("'issuetype'=Epic AND project='APOMON'")
+# Create list of issues in Epics plus subtasks for Epics in separate subtasks table
+for issue in epic_lists:
+    issue_list = jira.search_issues("'Epic Link'=%s AND project=%s" %(str(issue), 'APOMON'), maxResults=500)
+    tabela.append(issue_list)
+    subtasks = jira.issue(issue).get_field('subtasks')
+    epicsubtable.append(subtasks)
+print('Issues and subtasks in progress')
+# Create list of subtasks for Issues in table: tabela
+for i in range(len(tabela)):
+    for il in range(len(tabela[i])):
+        subtasks = jira.issue(tabela[i][il]).get_field('subtasks')
+        issuesubtable.append(subtasks)
+
+print('Start writing data')
+subindex = 0
+for i in range(len(tabela)):
+    print('Epic:' + str(epic_lists[i]))
+    print('Epic subtasks: ' + str(epicsubtable[i]))
+    for il in range(len(tabela[i])):
+        print('Issue: ' + str(tabela[i][il]))
+        print('issue subtasks: ' + str(issuesubtable[subindex]))
+        subindex +=1
+
+print('Koniec')
+
