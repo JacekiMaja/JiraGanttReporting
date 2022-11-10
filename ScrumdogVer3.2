@@ -1,0 +1,45 @@
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+#warnings.simplefilter(action='ignore', category=SettingWithCopyWarning)
+
+import pandas as pd
+import plotly_express as px
+import plotly
+import numpy as np
+from datetime import date
+
+
+
+df = pd.read_excel(r'C:\Users\jostaszewski\PycharmProjects\pythonProject\testfile.xlsx', header=3, usecols='B:L')
+fd = df.query('PlannedCloseDate != "None"')
+
+# Convert to dates format and save it in the current directory
+
+today = date.today()
+fd['Created']=pd.to_datetime(fd['Created'])
+fd['PlannedCloseDate']=pd.to_datetime(fd['PlannedCloseDate'])
+fd['DaystoPlannedClose'] = (fd['PlannedCloseDate']-fd['Created']).dt.days
+fd['Today']=today
+fd['Today']=pd.to_datetime(fd['Today'])
+fd['DaystoToday'] = (fd['Today']-fd['PlannedCloseDate']).dt.days
+fd['Complete in %']=fd['DaystoToday']/fd['DaystoPlannedClose']
+
+#fd.to_excel('testfile_for_gantt.xlsx')
+
+
+tasks = fd['Summary']
+start = fd['Created']
+finish = fd['PlannedCloseDate']
+complete=fd['Complete in %']
+
+fig=px.timeline(fd, x_start=start, x_end=finish, y=tasks,color=complete,title='Gantt Chart from Jira')
+fig.update_yaxes(autorange='reversed')
+fig.update_layout(
+    title_font_size=24,
+    font_size=8,
+    title_font_family='Arial'
+    )
+#plotly.offline.plot(fig, filename='Task_Gantt_Chart.html')
+
+
+
